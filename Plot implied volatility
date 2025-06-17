@@ -1,0 +1,36 @@
+
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+
+# here we can put the implied volatilities in to make a plot
+df <- data.frame(
+  StockPrice = c(0.75, 1.00, 1.25, 1.50, 1.75, 2.00, 2.25, 2.50),
+  Model_1 = c(0.8903, 0.8239, 0.7816, 0.735, 0.6981, 0.6475, 0.6151, 0.5603),
+  Model_2 = c(0.6195, 0.6261, 0.6374, 0.6485, 0.6688, 0.6842, 0.7196, 0.7219),
+  Model_3 = c(0.7576, 0.7264, 0.6958, 0.6781, 0.6639, 0.6678, 0.6496, 0.6535),
+  Model_5 = c(0.6321, 0.5818, 0.5711, 0.6125, 0.7090, 0.8329, 0.9452, 1.0227)
+)
+
+df_long <- df %>%
+  pivot_longer(cols = starts_with("Model"),
+               names_to = "Model",
+               values_to = "ImpliedVolatility")
+
+df_long$Model <- recode(df_long$Model,
+                        Model_1 = "Model 1",
+                        Model_2 = "Model 2",
+                        Model_3 = "Model 3",
+                        Model_5 = "Model 4")
+
+ggplot(df_long, aes(x = StockPrice, y = ImpliedVolatility, color = Model)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  labs(
+    title = "Strike Price vs Implied Volatility",
+    x = "Strike Price",
+    y = "Implied Volatility",
+    color = "Model"
+  ) +
+  theme_minimal()
+
