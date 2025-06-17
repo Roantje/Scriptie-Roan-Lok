@@ -1,0 +1,58 @@
+#%%
+"""
+OU-process density recovery using the COS method
+"""
+import numpy as np
+import matplotlib.pyplot as plt
+
+def COSDensity(cf, x, N, a, b):
+    i = complex(0.0, 1.0)                                       #complexe i invoegen
+    k = np.linspace(0, N-1, N)                                  #k lopen langs 0,1,2,...,N-1
+    u = k * np.pi / (b - a)                                     #u zoals in boek
+        
+    # F_k coefficients
+    F_k = 2.0 / (b - a) * np.real(cf(u) * np.exp(-i * u * a))   #F_k zoals in boek
+    F_k[0] = F_k[0] * 0.5                                       # herschalen eerste term
+    
+    # Final calculation
+    f_X = np.matmul(F_k, np.cos(np.outer(u, x - a)))            #line 6.17 boek
+        
+    return f_X
+    
+def mainCalculation():
+    i = complex(0.0, 1.0)  
+    
+    # integratie range
+    a = -200.0
+    b = 200.0
+    
+    # Define the range for expansion points
+    N = [2**x for x in range(6, 11, 1)]                          #hoeveelheid expansion terms
+    
+    # OU-process settings
+    sigma = 1
+    theta = -1 
+    S0 = 1
+    T = 1.0
+        
+    # Characteristic functie of OU-process
+    cF = lambda u: np.exp(i*u*S0*np.exp(theta*T)-(sigma**2*(np.exp(2*theta*T)-1)*u**2) / (4*theta))  
+    
+    # Domain for density
+    x = np.linspace(-3.5, 4.5, 100)                                #voor hoeveel punten je wil plotten
+    
+    plt.figure(1)
+    plt.grid()
+    plt.xlabel("x")
+    plt.ylabel("$f_X(x)$")
+    
+    for n in N:
+        f_X = COSDensity(cF, x, n, a, b)
+        
+        plt.plot(x, f_X)
+    
+    plt.legend([f'N={n}' for n in N])
+    plt.title('COS method for OU-Density Recovery')
+    plt.show()
+
+mainCalculation()
