@@ -1,0 +1,72 @@
+def payoff_coeff_graad3(a, b, x1, x2, k, K):
+
+  # kiezen van de polynoom
+    A = 1  
+    B = 1 
+    C = 1
+
+    # european put option payoff
+    if A * x2**3 + B * x2**2 + C * x2 < K < A * x1**3 + B * x1**2 + C * x1:
+      
+      sqrt_term = np.sqrt(27 * K**2 + 14 * K + 3 + 7)
+      cube_root_base = 27 * K + 5.19615 * sqrt_term
+      
+      numerator = 0.264567 * np.cbrt(cube_root_base) - 0.333333 - 0.839947
+      denominator = np.cbrt(cube_root_base)
+      expr = numerator / denominator
+      y = expr
+      cos_term = np.cos(np.pi * k * (y - a) / (a - b))
+      sin_term = np.sin(np.pi * k * (a - y) / (a - b))
+      term1 = ( 
+    (a - b) * cos_term * (
+        6 * a**2 * A - 12 * a * A * b + A * (6 * b**2 - 3 * np.pi**2 * k**2 * y**2)
+        - np.pi**2 * k**2 * (2 * B + C)
+    ) + np.pi * k * sin_term * (
+        np.pi**2 * k**2 * (y * (A * y**2 + 2 * B + C)) - K - 6 * A * y * (a - b)**2
+    )
+        )
+      term1_k0 = -A * y**4 / 4 - B * y**2 - C * y**2 / 2 + K * y
+
+      y = x1
+      term2 = (
+    (a - b) * cos_term * (
+        6 * a**2 * A - 12 * a * A * b + A * (6 * b**2 - 3 * np.pi**2 * k**2 * y**2)
+        - np.pi**2 * k**2 * (2 * B + C)
+    ) + np.pi * k * sin_term * (
+        np.pi**2 * k**2 * (y * (A * y**2 + 2 * B + C)) - K - 6 * A * y * (a - b)**2
+    )
+        )
+      term2_k0 = -A * y**4 / 4 - B * y**2 - C * y**2 / 2 + K * y
+
+    elif A * x2**3 + B * x2**2 + C * x2 < K :
+      y = x2
+      term1 = ( 
+    (a - b) * cos_term * (
+        6 * a**2 * A - 12 * a * A * b + A * (6 * b**2 - 3 * np.pi**2 * k**2 * y**2)
+        - np.pi**2 * k**2 * (2 * B + C)
+    ) + np.pi * k * sin_term * (
+        np.pi**2 * k**2 * (y * (A * y**2 + 2 * B + C)) - K - 6 * A * y * (a - b)**2
+    )
+        )
+      term1_k0 = -A * y**4 / 4 - B * y**2 - C * y**2 / 2 + K * y
+      y = x1
+      term2 = (
+    (a - b) * cos_term * (
+        6 * a**2 * A - 12 * a * A * b + A * (6 * b**2 - 3 * np.pi**2 * k**2 * y**2)
+        - np.pi**2 * k**2 * (2 * B + C)
+    ) + np.pi * k * sin_term * (
+        np.pi**2 * k**2 * (y * (A * y**2 + 2 * B + C)) - K - 6 * A * y * (a - b)**2
+    )
+        )
+      term2_k0 = -A * y**4 / 4 - B * y**2 - C * y**2 / 2 + K * y
+      
+    else:
+        term1 = np.zeros_like(k, dtype=float)
+        term2 = np.zeros_like(k, dtype=float)
+        term1_k0 = 0.0
+        term2_k0 = 0.0
+
+    exprtotaal = term1 - term2
+    exprtotaal[1:] = (1 / (k[1:]**4 * np.pi**4)) * exprtotaal[1:]
+    exprtotaal[0] = term1_k0 - term2_k0
+    return exprtotaal
