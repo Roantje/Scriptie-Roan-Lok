@@ -1,0 +1,105 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+
+def CallPutOptionPriceCOSMthd(cf, CP, S0, r, T, K, N, sigma):
+    i = complex(0.0, 1.0)
+
+    a = 0
+    b = 1000
+
+    k = np.arange(N).reshape([N, 1])
+    # u = k * np.pi / (b - a)
+
+    # bereken V_k
+    x1 = a
+    x2 = b
+    V_k = payoff_coeff(a, b, x1, x2, k, K)
+
+    # bereken φ(u) = cf(u)
+    phi_u = cf(k * np.pi / (b - a))
+
+    # Complex exponential term
+    exp_term = np.exp( - i * k * np.pi * (a / (b - a)))
+
+    # neem real part 
+    integrand = np.real(phi_u * exp_term) * V_k
+
+    # keer 0.5 in k=0 term
+    integrand[0] = integrand[0] * 0.5
+
+    # Final COS formula
+    value = np.exp(-r * T) * np.sum(integrand)
+
+    return value.item()
+
+
+
+def payoff_coeff(a, b, x1, x2, k, K):
+    # european put options
+    if x1 < K < x2:
+      y = K
+      term1 = 2* ( (a - b) * np.cos(k * np.pi*((a - y) / (a - b))) +  \
+                k * np.pi * (y - K) * np.sin(k * np.pi *((y - a) / (a - b))) )
+      term1_k0 = (2/(b - a)) * (0.5*y**2 - K*y)
+
+      y = x1
+      term2 = 2* ( (a - b) * np.cos(k * np.pi*((a - y) / (a - b))) +  \
+                k * np.pi * (y - K) * np.sin(k * np.pi *((y - a) / (a - b))) )
+      term2_k0 = (2/(b - a)) * (0.5*y**2 - K*y)
+
+    if x2 < K :
+      y = x2
+      term1 = 2* ( (a - b) * np.cos(k * np.pi*((a - y) / (a - b))) +  \
+                k * np.pi * (y - K) * np.sin(k * np.pi *((y - a) / (a - b))) )
+      term1_k0 = (2/(b - a)) * (0.5*y**2 - K*y)
+      y = x1
+      term2 = 2* ( (a - b) * np.cos(k * np.pi*((a - y) / (a - b))) +  \
+                k * np.pi * (y - K) * np.sin(k * np.pi *((y - a) / (a - b))) )
+      term2_k0 = (2/(b - a)) * (0.5*y**2 - K*y)
+
+    exprtotaal = term1 - term2
+    exprtotaal[1:] = exprtotaal[1:] / (k[1:]**2 * np.pi**2)
+    exprtotaal[0] = term1_k0 - term2_k0
+    return exprtotaal
+
+
+def mainCalculation_COS():
+    i = complex(0.0, 1.0)
+
+    # Parameters
+    CP = "p"
+    S0 = 1
+    r = 0.01
+    T = 0.1
+    alpha = -1
+    sigma = 1
+
+    K_list = [0.75, 1, 1.25, 1.5, 1.75, 2, 2.25, 2.5]
+    N = 2048
+    # Characteristieke functie voor OU-process
+    cf = lambda u: np.exp(i*u*S0*np.exp(alpha*T) - 
+                          (sigma**2*(np.exp(2*alpha*T) - 1)*u**2) / (4*alpha))
+
+    val_COS_list = []
+    for K_i in K_list:
+        price = CallPutOptionPriceCOSMthd(cf, CP, S0, r, T, K_i, N, sigma)
+        val_COS_list.append(price)
+
+    # Print option prijzen
+    print("\nEuropean Put Option Prices (COS Method):")
+    print(f"{'Strike':>10} | {'Price':>10}")
+    print("-" * 24)
+    for K, price in zip(K_list, val_COS_list):
+        print(f"{K:10.2f} | {price:10.6f}")
+
+    # Plot
+    plt.plot(K_list, val_COS_list, marker='o')
+    plt.xlabel("Strike, K")
+    plt.ylabel("COS Option Price")
+    plt.title("COS Method - European Put Option")
+    plt.grid()
+    plt.show()
+
+mainCalculation_COS()
