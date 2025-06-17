@@ -1,0 +1,33 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# parameters
+T = 1.0          # Total time
+N = 100          # Number of time steps
+dt = T / N       # Time steps
+M = 20           # Number of Monte Carlo paths
+
+# Time 
+t = np.linspace(0, T, N + 1)
+
+X = np.zeros((M, N + 1))
+X[:, 0] = 1 # Initial value of X(0)
+
+# Simulate X(t)
+for i in range(N):
+    dW = np.random.normal(0, np.sqrt(dt), size=M)
+    X[:, i+1] = X[:, i] + (-X[:, i]) * dt + dW
+
+# S(t) = polynoom
+S = 0 * X**3 - 0 * X**2 + 1 * X
+
+# Plot paden
+plt.figure(figsize=(10, 6))
+for i in range(M):
+    plt.plot(t, S[i], lw=1)
+
+plt.title('Monte Carlo Simulation of S(t) = X(t)')
+plt.xlabel('Time t')
+plt.ylabel('S(t)')
+plt.grid(True)
+plt.show()
