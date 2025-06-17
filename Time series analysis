@@ -1,0 +1,177 @@
+install.packages("tidyquant")
+install.packages("dplyr")
+install.packages("ggplot2")
+install.packages("lubridate")
+install.packages("quantmod")
+install.packages("lmtest")
+install.packages("Kendall")
+library(Kendall)
+library(lmtest)
+library(quantmod)
+library("tidyverse")
+library(tidyquant)
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(tseries) 
+library(forecast)
+library(zoo)
+
+
+#Obtaining the Bitcoin data from Yahoo finance website 
+Bitcoin_Data <- tq_get("BTC-USD", from = "2015-01-01", to = Sys.Date(), get = "stock.prices")
+
+#Summary statistieken of the daily returns
+summary(Bitcoin$Daily_Return)
+
+#Filter per year (interval)
+Bitcoin <- Bitcoin_Data %>%
+  filter(year(date) > 2023)
+
+#Add extra column for daily Returns
+Bitcoin <- Bitcoin %>%
+  arrange(date) %>%
+  mutate(Daily_Return = (close - lag(close)))
+
+#Add extra column for Log Returns
+Bitcoin <- Bitcoin %>%
+  arrange(date) %>%
+  mutate(Log_Return = log(close/lag(close)))
+
+#make a time series and running tests ADF and KPSS on close prices
+price_tt <- ts(Bitcoin$close, start = c(2021, 1), frequency = 1461)
+
+adf.test(price_tt) #with zero-hypothesis: no stationary. We rejecten niet => dus no stationary
+kpss.test(price_tt) #with zero-hypothesis: stationary. We rejecten wel => dus no stationary
+
+#make a time series and running tests ADF and KPSS on daily Returns
+price_st <- ts(Bitcoin$Daily_Return, start = c(2021, 1), frequency = 1461)
+
+price_st <- na.omit(price_st)
+adf.test(price_st) #with zero-hypothesis: no stationary. We rejecten => dus stationary
+kpss.test(price_st) #with zero-hypothesis: stationary. We rejecten niet => dus stationary
+
+#Testing autocorrelation 
+Box.test(Bitcoin$Daily_Return, lag = 10, type = "Ljung-Box") #Box-Ljung test on Daily Returns
+
+model <- lm(Daily_Return ~ 1, data = Bitcoin) #Breusch-Godfrey test
+bg_test_result <- bgtest(model, order = 10)       
+print(bg_test_result)   
+         
+#Test trends
+result <- MannKendall(Bitcoin$Daily_Return) #Mann-Kendall test
+print(result)
+
+#AIC calculation
+returns <- Bitcoin$Daily_Return  
+
+# Define AR (p) and MA (q) orders to test
+p_values <- c(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 )
+q_values <- c(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+
+# Create a matrix AIC values
+aic_matrix <- matrix(NA, nrow = length(p_values), ncol = length(q_values),
+                     dimnames = list(paste0("p=", p_values), paste0("q=", q_values)))
+
+# Loop over alle combinations of p and q
+for (p in p_values) {
+  for (q in q_values) {
+    model <- tryCatch(
+      {
+        arima(returns, order = c(p, 0, q), method = "ML")  
+      },
+      error = function(e) return(NULL)  
+    )
+    
+    # Store AIC if model is successfully fitted
+    if (!is.null(model)) {
+      aic_matrix[paste0("p=", p), paste0("q=", q)] <- model$aic
+    }
+  }
+}
+
+# Print the AIC table
+print(aic_matrix)
+
+#calculate ACF and PARF
+returns <- na.omit(Bitcoin$Daily_Return)
+
+# Function to extract ACF/PACF data
+extract_acf_data <- function(acf_result) {
+  data.frame(Lag = acf_result$lag, AC = acf_result$acf)
+}
+
+# Compute ACF and PACF
+acf_data <- extract_acf_data(acf(returns, plot = FALSE, lag.max = 20))
+pacf_data <- extract_acf_data(pacf(returns, plot = FALSE, lag.max = 20))
+
+# Plot ACF
+acf_plot <- ggplot(acf_data, aes(x = Lag, y = AC)) +
+  geom_segment(aes(xend = Lag, yend = 0), color = "lightblue", size = 1) + 
+  geom_point(color = "blue", size = 3) +  # Blue dots at the end of lines
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black") +  
+  labs(title = "Autocorrelation of Daily Returns", x = "Lag", y = "ACF") +
+  theme_minimal()
+
+# Plot PACF
+pacf_plot <- ggplot(pacf_data, aes(x = Lag, y = AC)) +
+  geom_segment(aes(xend = Lag, yend = 0), color = "lightblue", size = 1) +  
+  geom_point(color = "blue", size = 3) +  
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black") +  
+  labs(title = "Partial Autocorrelation of Daily Returns", x = "Lag", y = "PACF") +
+  theme_minimal()
+
+# Print the plots
+print(acf_plot)
+print(pacf_plot)
+
+#Ljung-Box test on different ARIMA models
+Bitcoin$Daily_Return <- ifelse(Bitcoin$Daily_Return == 0, 0.0001, Bitcoin$Daily_Return)
+target_series <- log(Bitcoin$Daily_Return)
+
+#ARMA(p,d,q) model
+arma_model <- Arima(target_series, order = c(7, 1, 10))  # (p=8, d=1, q=9)
+
+# Extract residuals
+residuals_arma <- residuals(arma_model)
+
+# Ljung-Box test op residuals 
+Box.test(residuals_arma, lag = 20, type = "Ljung-Box")
+
+
+#Filter per year (interval)
+Bitcoin <- Bitcoin_Data %>%
+  filter(year(date) > 2020, date <= as.Date("2025-02-20"))
+#forecasting
+price_ts <- ts(Bitcoin$close, frequency = 1512) 
+
+model <- arima(price_ts, order = c(10, 1, 7))
+
+# Forecast t dagen, namely 1 day
+forecasted_values <- forecast(model, h = 1)
+
+# forecast waardes
+forecasted_values$mean
+forecasted_values$lower
+forecasted_values$upper
+
+# Plot the forecast
+plot(forecasted_values)
+plot(forecasted_values,
+     xlim = c(1.97, 2.01),  
+     ylim = c(75000, 110000), 
+     xlab = "Date", 
+     ylab = "Value", 
+     main = "Bitcoin Price Forecast")
+
+#Plotting data
+ggplot(data = Bitcoin, aes(x = date, y = close)) +
+  geom_line(color="#1f78b4", fill="white") +
+  labs(x = "Date",
+       y = "Closing Price",
+       title = "Bitcoin Closing Prices") +
+  theme_classic()
+
+
+
+         
