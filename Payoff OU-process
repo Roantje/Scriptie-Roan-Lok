@@ -1,0 +1,27 @@
+def payoff_coeff(a, b, x1, x2, k, K):
+    # european put options
+    if x1 < K < x2:
+      y = K
+      term1 = 2* ( (a - b) * np.cos(k * np.pi*((a - y) / (a - b))) +  \
+                k * np.pi * (y - K) * np.sin(k * np.pi *((y - a) / (a - b))) )
+      term1_k0 = (2/(b - a)) * (0.5*y**2 - K*y)
+
+      y = x1
+      term2 = 2* ( (a - b) * np.cos(k * np.pi*((a - y) / (a - b))) +  \
+                k * np.pi * (y - K) * np.sin(k * np.pi *((y - a) / (a - b))) )
+      term2_k0 = (2/(b - a)) * (0.5*y**2 - K*y)
+
+    if x2 < K :
+      y = x2
+      term1 = 2* ( (a - b) * np.cos(k * np.pi*((a - y) / (a - b))) +  \
+                k * np.pi * (y - K) * np.sin(k * np.pi *((y - a) / (a - b))) )
+      term1_k0 = (2/(b - a)) * (0.5*y**2 - K*y)
+      y = x1
+      term2 = 2* ( (a - b) * np.cos(k * np.pi*((a - y) / (a - b))) +  \
+                k * np.pi * (y - K) * np.sin(k * np.pi *((y - a) / (a - b))) )
+      term2_k0 = (2/(b - a)) * (0.5*y**2 - K*y)
+
+    exprtotaal = term1 - term2
+    exprtotaal[1:] = exprtotaal[1:] / (k[1:]**2 * np.pi**2)
+    exprtotaal[0] = term1_k0 - term2_k0
+    return exprtotaal
